@@ -1,21 +1,23 @@
 import { useState, useEffect } from "react";
 import SignupForm from "./SignupForm";
-import LoginForm from "./LoginForm";
+import LoginForm   from "./LoginForm";
+import AddItemForm from "./AddItemForm";
 
-function App() {
+export default function App() {
+  /* session + UI state */
+  const [user,       setUser]     = useState(null);
   const [showSignup, setShowSignup] = useState(false);
-  const [user, setUser] = useState(null);
+  const [loading,    setLoading]  = useState(true);
 
+  /* initial session check */
   useEffect(() => {
-    fetch("http://localhost:4000/api/me", {
-      credentials: "include",
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (!data.error) setUser(data);
-      });
+    fetch("http://localhost:4000/api/me", { credentials: "include" })
+      .then(r => r.json())
+      .then(d => { if (!d.error) setUser(d); })
+      .finally(() => setLoading(false));
   }, []);
 
+  /* logout */
   const handleLogout = async () => {
     await fetch("http://localhost:4000/api/logout", {
       method: "POST",
@@ -24,24 +26,48 @@ function App() {
     setUser(null);
   };
 
+  /* callback passed to auth forms */
+  const handleAuthSuccess = (freshUser) => {
+    setUser(freshUser);
+  };
+
+  /* loading spinner */
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-gray-600">Checking session…</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-gray-100 p-6 flex flex-col items-center">
       {user ? (
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-green-700 mb-4">
-            👋 Welcome, {user.name || user.email}!
-          </h1>
-          <button
-            className="bg-red-500 text-white px-4 py-2 rounded"
-            onClick={handleLogout}
-          >
-            Logout
-          </button>
-        </div>
-      ) : (
+        /* ---------- LOGGED‑IN VIEW ---------- */
         <>
-          {showSignup ? <SignupForm /> : <LoginForm />}
-          <p className="mt-4 text-sm">
+          <div className="text-center mb-6">
+            <h1 className="text-2xl font-bold text-green-700">
+              👋 Welcome, {user.name || user.email}!
+            </h1>
+            <button
+              className="mt-2 bg-red-500 text-white px-4 py-2 rounded"
+              onClick={handleLogout}
+            >
+              Logout
+            </button>
+          </div>
+          <AddItemForm />
+        </>
+      ) : (
+        /* ---------- VISITOR VIEW ---------- */
+        <>
+          {showSignup ? (
+            <SignupForm onAuth={handleAuthSuccess} />
+          ) : (
+            <LoginForm  onAuth={handleAuthSuccess} />
+          )}
+
+          <p className="mt-4 text-sm text-center">
             {showSignup ? "Already have an account?" : "Don't have an account?"}{" "}
             <button
               className="text-blue-600 underline"
@@ -55,5 +81,3 @@ function App() {
     </div>
   );
 }
-
-export default App;
