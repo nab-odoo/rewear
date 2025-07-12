@@ -47,14 +47,8 @@ app.post('/api/login', async (req, res) => {
   }
 
   req.session.userId = user.id;
-
-  // ✅ return the whole user object
-  res.json({
-    message: 'Login successful',
-    user,
-  });
+  res.json({ message: 'Login successful', userId: user.id });
 });
-
 
 // 🧑‍💼 Get current user
 app.get('/api/me', async (req, res) => {
@@ -74,38 +68,17 @@ app.post("/api/logout", (req, res) => {
   });
 });
 
-app.post("/api/items", async (req, res) => {
-  const userId = req.session.userId;
-
-  if (!userId) {
-    return res.status(401).json({ error: "Not logged in" });
-  }
-
-  const {
-    title,
-    description,
-    category,
-    size,
-    condition,
-    tags = "",
-  } = req.body;
-
+// GET /api/items → returns all available items
+app.get("/api/items", async (req, res) => {
   try {
-    const item = await prisma.item.create({
-      data: {
-        title,
-        description,
-        category,
-        size,
-        condition,
-        tags,
-        ownerId: userId,
-      },
+    const items = await prisma.item.findMany({
+      where: { status: "available" },
+      include: { owner: true }, // so we can show uploader info
+      orderBy: { createdAt: "desc" },
     });
-
-    res.json({ message: "Item listed successfully", item });
+    res.json(items);
   } catch (err) {
-    console.error("Error creating item:", err);
-    res.status(500).json({ error: "Failed to create item" });
+    console.error("Error fetching items:", err);
+    res.status(500).json({ error: "Failed to load items" });
   }
 });

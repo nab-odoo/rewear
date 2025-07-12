@@ -1,23 +1,24 @@
 import { useState, useEffect } from "react";
 import SignupForm from "./SignupForm";
-import LoginForm   from "./LoginForm";
-import AddItemForm from "./AddItemForm";
+import LoginForm from "./LoginForm";
+import ItemFeed from "./ItemFeed"; // 👈 Make sure this file exists
 
-export default function App() {
-  /* session + UI state */
-  const [user,       setUser]     = useState(null);
+function App() {
+  const [user, setUser] = useState(null);
   const [showSignup, setShowSignup] = useState(false);
-  const [loading,    setLoading]  = useState(true);
+  const [loading, setLoading] = useState(true);
 
-  /* initial session check */
   useEffect(() => {
-    fetch("http://localhost:4000/api/me", { credentials: "include" })
-      .then(r => r.json())
-      .then(d => { if (!d.error) setUser(d); })
+    fetch("http://localhost:4000/api/me", {
+      credentials: "include",
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (!data.error) setUser(data);
+      })
       .finally(() => setLoading(false));
   }, []);
 
-  /* logout */
   const handleLogout = async () => {
     await fetch("http://localhost:4000/api/logout", {
       method: "POST",
@@ -26,12 +27,10 @@ export default function App() {
     setUser(null);
   };
 
-  /* callback passed to auth forms */
   const handleAuthSuccess = (freshUser) => {
     setUser(freshUser);
   };
 
-  /* loading spinner */
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -43,7 +42,6 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gray-100 p-6 flex flex-col items-center">
       {user ? (
-        /* ---------- LOGGED‑IN VIEW ---------- */
         <>
           <div className="text-center mb-6">
             <h1 className="text-2xl font-bold text-green-700">
@@ -56,19 +54,22 @@ export default function App() {
               Logout
             </button>
           </div>
-          <AddItemForm />
+
+          {/* ✅ Display Item Feed instead of AddItemForm */}
+          <ItemFeed />
         </>
       ) : (
-        /* ---------- VISITOR VIEW ---------- */
         <>
           {showSignup ? (
             <SignupForm onAuth={handleAuthSuccess} />
           ) : (
-            <LoginForm  onAuth={handleAuthSuccess} />
+            <LoginForm onAuth={handleAuthSuccess} />
           )}
 
           <p className="mt-4 text-sm text-center">
-            {showSignup ? "Already have an account?" : "Don't have an account?"}{" "}
+            {showSignup
+              ? "Already have an account?"
+              : "Don't have an account?"}{" "}
             <button
               className="text-blue-600 underline"
               onClick={() => setShowSignup(!showSignup)}
@@ -81,3 +82,5 @@ export default function App() {
     </div>
   );
 }
+
+export default App;
