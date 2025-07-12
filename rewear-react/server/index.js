@@ -82,3 +82,41 @@ app.get("/api/items", async (req, res) => {
     res.status(500).json({ error: "Failed to load items" });
   }
 });
+
+app.post("/api/items", async (req, res) => {
+  const userId = req.session.userId;
+
+  if (!userId) {
+    return res.status(401).json({ error: "Not logged in" });
+  }
+
+  const {
+    title,
+    description,
+    category,
+    size,
+    condition,
+    tags = "",
+  } = req.body;
+
+  try {
+    const item = await prisma.item.create({
+      data: {
+        title,
+        description,
+        category,
+        size,
+        condition,
+        tags,
+        status: "available",
+        ownerId: userId,
+      },
+    });
+
+    res.json({ message: "Item listed successfully", item });
+  } catch (err) {
+    console.error("Error creating item:", err);
+    res.status(500).json({ error: "Failed to create item" });
+  }
+});
+
