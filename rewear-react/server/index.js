@@ -91,25 +91,28 @@ app.post("/api/items", async (req, res) => {
   }
 
   const {
+  title,
+  description,
+  category,
+  size,
+  condition,
+  tags = "",
+  imageUrl = "",              // ← add this line
+  status = "available"        // ← optional, default handled by Prisma
+} = req.body;
+
+  try {
+    const item = await prisma.item.create({
+  data: {
     title,
     description,
     category,
     size,
     condition,
-    tags = "",
-  } = req.body;
-
-  try {
-    const item = await prisma.item.create({
-      data: {
-        title,
-        description,
-        category,
-        size,
-        condition,
-        tags,
-        status: "available",
-        ownerId: userId,
+    tags,
+    status,
+    imageUrl,
+    ownerId: userId,
       },
     });
 
@@ -117,6 +120,88 @@ app.post("/api/items", async (req, res) => {
   } catch (err) {
     console.error("Error creating item:", err);
     res.status(500).json({ error: "Failed to create item" });
+  }
+});
+
+app.get("/api/items/:id", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const item = await prisma.item.findUnique({
+      where: { id },
+      include: { owner: true },
+    });
+
+    if (!item) return res.status(404).json({ error: "Item not found" });
+
+    res.json(item);
+  } catch (err) {
+    console.error("Error fetching item:", err);
+    res.status(500).json({ error: "Failed to fetch item" });
+  }
+});
+
+// PATCH: update item status (swap or redeem)
+app.patch("/api/items/:id/status", async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  const userId = req.session.userId;
+
+  if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+  if (!["available", "swapped", "redeemed"].includes(status)) {
+    return res.status(400).json({ error: "Invalid status" });
+  }
+
+  try {
+    const item = await prisma.item.findUnique({ where: { id } });
+    if (!item) return res.status(404).json({ error: "Item not found" });
+
+    const updatedItem = await prisma.item.update({
+      where: { id },
+      data: { status },
+      include: { owner: true }, // 👈 keep this to return full item
+    });
+
+    // Award points if redeemed
+    if (status === "redeemed") {
+      await prisma.user.update({
+        where: { id: item.ownerId },
+        data: { points: { increment: 10 } },
+      });
+    }
+
+    // ✅ Final single response
+    res.json({ message: "Item updated", item: updatedItem });
+
+  } catch (err) {
+    console.error("Status update failed:", err);
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+});
+
+app.get("/api/dashboard", async (req, res) => {
+  const userId = req.session.userId;
+  if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+  try {
+    const [items, user] = await Promise.all([
+      prisma.item.findMany({
+        where: { ownerId: userId },
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.user.findUnique({
+        where: { id: userId },
+        select: { points: true },
+      }),
+    ]);
+
+    res.json({ items, points: user?.points || 0 });
+  } catch (err) {
+    console.error("Dashboard error:", err);
+    res.status(500).json({ error: "Failed to load dashboard" });
   }
 });
 

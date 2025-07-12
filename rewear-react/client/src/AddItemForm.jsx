@@ -2,13 +2,14 @@ import { useState } from "react";
 
 export default function AddItemForm() {
   const [form, setForm] = useState({
-    title: "",
-    description: "",
-    category: "",
-    size: "",
-    condition: "",
-    tags: "",
-  });
+  title: "",
+  description: "",
+  category: "",
+  size: "",
+  condition: "",
+  tags: "",
+});
+  const [imageFile, setImageFile] = useState(null);
   const [msg, setMsg] = useState("");
 
   const handleChange = (e) =>
@@ -17,13 +18,28 @@ export default function AddItemForm() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMsg("Submitting…");
+    let imageUrl = "";
+
+if (imageFile) {
+  const formData = new FormData();
+  formData.append("file", imageFile);
+  formData.append("upload_preset", "rewear_trial"); // replace with yours
+
+  const uploadRes = await fetch("https://api.cloudinary.com/v1_1/dlbrbpo0r/image/upload", {
+    method: "POST",
+    body: formData,
+  });
+
+  const uploadData = await uploadRes.json();
+  imageUrl = uploadData.secure_url;
+}
 
     try {
       const res = await fetch("http://localhost:4000/api/items", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, imageUrl }),
       });
       const data = await res.json();
       setMsg(res.ok ? "✅ Item listed!" : "❌ " + data.error);
@@ -78,12 +94,20 @@ export default function AddItemForm() {
              value={form.tags} onChange={handleChange}
              className="block w-full border px-3 py-2 mb-3" />
 
+<input
+  type="file"
+  accept="image/*"
+  onChange={(e) => setImageFile(e.target.files[0])}
+  className="block w-full border px-3 py-2 mb-3"
+/>
+
       <button type="submit"
               className="bg-blue-600 text-white px-4 py-2 rounded">
         Submit Item
       </button>
 
       {msg && <p className="mt-4 text-sm">{msg}</p>}
+      
     </form>
   );
 }

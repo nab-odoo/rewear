@@ -8,24 +8,26 @@ generator client {
 }
 
 model User {
-  id       String   @id @default(cuid())
-  email    String   @unique
-  password String
-  name     String?
-  points   Int      @default(0)
-  items    Item[]
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String?
+  items     Item[]
+  points    Int      @default(0) // ✅ Add this line
 }
+
 
 model Item {
   id          String   @id @default(cuid())
-  owner       User     @relation(fields: [ownerId], references: [id])
-  ownerId     String
   title       String
   description String
   category    String
   size        String
   condition   String
-  tags        String
+  tags        String?
+  imageUrl    String?  // ← Add this line
   status      String   @default("available")
   createdAt   DateTime @default(now())
+  owner       User     @relation(fields: [ownerId], references: [id])
+  ownerId     String
 }
